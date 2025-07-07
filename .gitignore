@@ -1,0 +1,33 @@
+# Symfony
+/vendor/
+/var/
+/.env.local
+.env.test.local
+.env.dev.local
+/public/bundles/
+/node_modules/
+/.phpunit.result.cache
+/build/
+
+# Vue.js
+front_myexpensetracker/node_modules
+front_myexpensetracker/dist
+front_myexpensetracker/.env.local
+
+# IDEs & tools
+*.log
+*.lock
+*.sqlite
+.idea/
+.vscode/
+.DS_Store
+*.iml
+
+# Docker
+docker/php/.phpunit.cache
+docker/php/.php-cs-fixer.cache
+
+# Coverage
+coverage/
+.clover
+.phpunit.cache
