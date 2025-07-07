@@ -1,0 +1,66 @@
+version: "3.9"
+
+services:
+  ### PostgreSQL ###
+  db:
+    image: postgres:16
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mydb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  ### pgAdmin ###
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+  ### PHP + Symfony ###
+  php:
+    build:
+      context: ./docker/php
+    container_name: php-backend
+    volumes:
+      - ./back_myexpensetracker:/var/www/html
+    working_dir: /var/www/html
+    depends_on:
+      - db
+
+  ### Serveur Nginx ###
+  web:
+    image: nginx:latest
+    container_name: nginx-server
+    ports:
+      - "8080:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./back_myexpensetracker:/var/www/html
+      - ./front_myexpensetracker/dist:/usr/share/nginx/html
+    depends_on:
+      - php
+      - frontend
+
+  ### Frontend Vue.js ###
+  frontend:
+    build:
+      context: ./front_myexpensetracker
+    container_name: vue-frontend
+    volumes:
+      - ./front_myexpensetracker:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=production
+
+volumes:
+  pgdata:
