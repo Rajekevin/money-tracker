@@ -1,0 +1,44 @@
+parameters:
+    budget.storage_path: '%kernel.project_dir%/var/data/budgets.json'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+            # The domain is plain PHP: no service in it is built by the container.
+            - '../src/Domain/'
+            - '../src/Application/Budget/Exception/'
+
+    App\Infrastructure\Http\:
+        resource: '../src/Infrastructure/Http/'
+        exclude: '../src/Infrastructure/Http/JsonPayload.php'
+        tags: ['controller.service_arguments']
+
+    # Ports wired to their adapters. Swap an adapter here, nowhere else.
+    App\Domain\Budget\BudgetRepository:
+        class: App\Infrastructure\Persistence\JsonFileBudgetRepository
+        arguments:
+            $path: '%budget.storage_path%'
+
+    App\Application\Budget\Port\AlertNotifier:
+        class: App\Infrastructure\Notification\LoggerAlertNotifier
+        arguments:
+            $budgetLogger: '@monolog.logger.budget'
+
+when@test:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+
+        App\Domain\Budget\BudgetRepository:
+            class: App\Infrastructure\Persistence\InMemoryBudgetRepository
+
+        App\Application\Budget\Port\AlertNotifier:
+            class: App\Infrastructure\Notification\RecordingAlertNotifier
+            public: true
