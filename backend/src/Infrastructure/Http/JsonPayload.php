@@ -32,8 +32,10 @@ final readonly class JsonPayload
             throw new BadRequestHttpException('The request body must be a JSON object.');
         }
 
-        /** @var array<string, mixed> $data */
-        return new self($data);
+        /** @var array<string, mixed> $fields */
+        $fields = $data;
+
+        return new self($fields);
     }
 
     public function string(string $field): string

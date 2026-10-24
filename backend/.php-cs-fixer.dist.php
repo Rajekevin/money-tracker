@@ -11,6 +11,8 @@ return (new PhpCsFixer\Config())
         '@Symfony' => true,
         'declare_strict_types' => true,
         'final_class' => true,
+        // Test names read as sentences: it_parses_euros_into_cents_without_floats.
+        'php_unit_method_casing' => ['case' => 'snake_case'],
     ])
     ->setRiskyAllowed(true)
     ->setFinder($finder)
