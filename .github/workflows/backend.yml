@@ -1,0 +1,54 @@
+name: Backend
+
+on:
+  push:
+    paths: ['backend/**', '.github/workflows/backend.yml']
+  pull_request:
+    paths: ['backend/**', '.github/workflows/backend.yml']
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  quality:
+    name: Tests and quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: |
+          if [ -f composer.lock ]; then
+            composer install --no-interaction --no-progress --prefer-dist
+          else
+            composer update --no-interaction --no-progress --prefer-dist
+          fi
+
+      - name: Upload the resolved composer.lock
+        if: ${{ hashFiles('backend/composer.lock') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: composer-lock
+          path: backend/composer.lock
+
+      - name: Coding standards (PHP-CS-Fixer)
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+
+      - name: Static analysis (PHPStan, level max)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
+      - name: Architecture rules (Deptrac)
+        run: vendor/bin/deptrac analyse --no-progress
+
+      - name: Unit, integration and functional tests (PHPUnit)
+        run: vendor/bin/phpunit
+
+      - name: Business scenarios (Behat)
+        run: vendor/bin/behat --strict --format=progress
