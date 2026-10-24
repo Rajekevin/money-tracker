@@ -16,7 +16,7 @@ front_myexpensetracker/.env.local
 
 # IDEs & tools
 *.log
-*.lock
+
 *.sqlite
 .idea/
 .vscode/
