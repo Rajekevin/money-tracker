@@ -19,17 +19,14 @@ frontend-install:
 frontend-build:
 	docker compose run --rm frontend npm run build
 
-migrate:
-	docker compose exec php php bin/console doctrine:migrations:migrate
-
 test:
 	docker compose exec php ./vendor/bin/phpunit
 
 behat:
-	docker compose exec php ./vendor/bin/behat
-
-phpspec:
-	docker compose exec php ./vendor/bin/phpspec run
+	docker compose exec php ./vendor/bin/behat --strict
 
 logs:
 	docker compose logs -f --tail=50
+
+qa:
+	docker compose exec php composer qa
