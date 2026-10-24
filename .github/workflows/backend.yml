@@ -1,0 +1,63 @@
+name: Backend
+
+on:
+  push:
+    paths: ['backend/**', '.github/workflows/backend.yml']
+  pull_request:
+    paths: ['backend/**', '.github/workflows/backend.yml']
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  quality:
+    name: Tests and quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2, cs2pr
+
+      - name: Install dependencies
+        id: install
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      # Every tool reports in a format GitHub turns into annotations on the PR.
+      - name: Coding standards (PHP-CS-Fixer)
+        if: always() && steps.install.outcome == 'success'
+        run: vendor/bin/php-cs-fixer fix --dry-run --format=checkstyle | cs2pr
+
+      - name: Static analysis (PHPStan, level max)
+        if: always() && steps.install.outcome == 'success'
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G --error-format=github
+
+      - name: Architecture rules (Deptrac)
+        if: always() && steps.install.outcome == 'success'
+        run: vendor/bin/deptrac analyse --no-progress --formatter=github-actions
+
+      - name: Unit, integration and functional tests (PHPUnit)
+        if: always() && steps.install.outcome == 'success'
+        run: |
+          mkdir -p var
+          vendor/bin/phpunit --log-junit var/junit.xml || {
+            php -r '$x = simplexml_load_file("var/junit.xml"); foreach ($x->xpath("//testcase[failure or error]") as $t) { $f = $t->failure ?: $t->error; echo "::error file=backend/".str_replace(getcwd()."/", "", (string) $t["file"]).",line=".$t["line"].",title=".$t["name"]."::".str_replace(["\r", "\n"], ["", "%0A"], (string) $f).PHP_EOL; }'
+            exit 1
+          }
+
+      - name: Business scenarios (Behat)
+        if: always() && steps.install.outcome == 'success'
+        run: |
+          mkdir -p var
+          vendor/bin/behat --strict --no-colors --format=progress > var/behat.txt 2>&1 || {
+            cat var/behat.txt
+            echo "::error title=Behat::$(tail -c 3000 var/behat.txt | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          }

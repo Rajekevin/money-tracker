@@ -1,158 +1,62 @@
-# 💸 Money Tracker
+# Money Tracker
 
-**Money Tracker** is a modern fullstack application to manage and track personal expenses and income.  
-It is built with **Symfony (API)** and **Vue.js (SPA)**, designed with **Clean Architecture**, and following **DDD**, **TDD**, and **BDD** best practices.  
-Everything runs in **Docker**, ready for development and deployment.
+Track your monthly spending against a budget, and get warned before you leave the green.
 
-## 📐 Architecture
+The backend is a Symfony 7.4 application built in **hexagonal architecture** (ports & adapters).
+The business rules are written first as **Behat scenarios in French**, then implemented test-first with **PHPUnit**.
+**Deptrac** checks in CI that dependencies only point inwards.
+
+## The rules
+
+- A budget covers one calendar month and has a spending limit.
+- Every expense must belong to the budget's month.
+- At **80 %** of the limit, the budget is *à surveiller* and a warning is sent, once.
+- Above the limit, the budget is *dans le rouge* and an overspending alert is sent, once.
+- Amounts are stored in cents, never as floats.
+
+They are spelled out in [`backend/features/rester_dans_le_vert.feature`](backend/features/rester_dans_le_vert.feature).
+
+## Architecture
 
 ```
-money-tracker/
-├── back_myexpensetracker/       # Symfony 6.x (PHP 8.3)
-│   ├── config/                  # Configuration files
-│   ├── src/                     # Domain (DDD), Application, Interfaces
-│   └── tests/                   # PHPUnit + Behat + PhpSpec tests
-│
-├── front_myexpensetracker/      # Vue.js 3 (Vite)
-│   ├── src/                     # Components, views, stores
-│   └── dist/                    # Built SPA output
-│
-├── docker/
-│   ├── php/                     # Dockerfile for PHP-FPM
-│   └── nginx/                   # Nginx config
-│
-├── docker-compose.yaml
-└── README.md
+backend/src
+├── Domain/          Pure PHP. Money, Month, Expense, MonthlyBudget (aggregate), events,
+│                    and the BudgetRepository port. No framework code allowed here.
+├── Application/     Use cases: DefineMonthlyBudget, RecordExpense, GetBudgetSummary,
+│                    and the AlertNotifier port.
+└── Infrastructure/  Adapters: HTTP controller, JSON file and in-memory repositories,
+                     logger and recording notifiers. Wired in config/services.yaml.
 ```
 
-## 🚀 Getting Started
+Dependencies go `Infrastructure → Application → Domain`, enforced by [`deptrac.yaml`](backend/deptrac.yaml).
+Swapping an adapter (a database instead of the JSON file, email instead of logs) is a one-line change in `config/services.yaml`.
 
-### 1. ✅ Clone the project
+## API
+
+| Method | Path | Body | Result |
+| --- | --- | --- | --- |
+| `PUT` | `/api/budgets/{YYYY-MM}` | `{"limit": "500"}` | 201 with the summary, 409 if it exists |
+| `POST` | `/api/budgets/{YYYY-MM}/expenses` | `{"amount": "120", "label": "Courses", "spentOn": "2026-10-05"}` | 201 with the summary, 422 if a rule is broken |
+| `GET` | `/api/budgets/{YYYY-MM}` | | 200 with the summary, 404 if unknown |
+
+## Run it
 
 ```bash
-git clone git@github.com:your-username/money-tracker.git
-cd money-tracker
+make up                 # PHP, Nginx, PostgreSQL, front
+make backend-install    # composer install
+make qa                 # coding standards, PHPStan max, Deptrac, PHPUnit, Behat
 ```
 
-### 2. 🐳 Launch Docker stack
+Without Docker, from `backend/`: `composer install`, then `composer qa`.
 
-```bash
-docker compose up --build
-```
+## Next slices
 
-This starts:
+- [ ] Doctrine adapter for `BudgetRepository` (PostgreSQL is already in `docker-compose.yaml`), with an integration test sharing the JSON adapter's contract
+- [ ] Email adapter for `AlertNotifier` with Symfony Mailer
+- [ ] Categories and a per-category limit, scenarios first
+- [ ] Carry the remaining amount over to the next month (or not): decide in a Gherkin scenario
+- [ ] Reconnect the Vue front (`front_myexpensetracker/`) to the new API
 
-| Container         | Description                        | Port          |
-|------------------|------------------------------------|---------------|
-| `db`             | PostgreSQL 16                      | `5432`        |
-| `pgadmin`        | DB Admin UI                        | `http://localhost:5050` |
-| `php-backend`    | PHP 8.3 + Symfony backend          | Internally exposed |
-| `nginx-server`   | Serves Vue frontend + Symfony API | `http://localhost:8080` |
-| `vue-frontend`   | Vue.js build runner (exits after build) | - |
+## License
 
-### 3. ⚙️ Install Symfony dependencies
-
-```bash
-docker compose exec php composer install
-```
-
-### 4. 🧪 Create and migrate the database
-
-```bash
-docker compose exec php php bin/console doctrine:database:create
-docker compose exec php php bin/console doctrine:migrations:migrate
-```
-
-### 5. 🎨 Build the frontend Vue.js app
-
-```bash
-docker compose run --rm frontend npm install
-docker compose run --rm frontend npm run build
-```
-
-## 🌐 Access the application
-
-| URL                             | Description               |
-|----------------------------------|---------------------------|
-| `http://localhost:8080/`         | Vue.js frontend SPA       |
-| `http://localhost:8080/default`  | Symfony backend test route |
-| `http://localhost:8080/api/...`  | Symfony API (secured or public) |
-| `http://localhost:5050/`         | pgAdmin UI (admin@admin.com / admin) |
-
-## 🧪 Run Tests
-
-### Backend
-
-#### ✅ PHPUnit
-
-```bash
-docker compose exec php ./vendor/bin/phpunit
-```
-
-#### ✅ Behat (BDD)
-
-```bash
-docker compose exec php ./vendor/bin/behat
-```
-
-#### ✅ PhpSpec (optional for DDD)
-
-```bash
-docker compose exec php ./vendor/bin/phpspec run
-```
-
-## 🧱 Technologies
-
-### Backend
-
-- PHP 8.3
-- Symfony 6.x
-- Doctrine ORM + Migrations
-- PHPUnit, Behat, PhpSpec
-- DDD (Domain Driven Design)
-- TDD / BDD
-
-### Frontend
-
-- Vue.js 3 (Composition API)
-- Vite.js
-- Pinia (store)
-- TypeScript (optional)
-- Axios / Fetch API
-
-### Infrastructure
-
-- PostgreSQL 16
-- Docker & Docker Compose
-- Nginx + PHP-FPM
-- pgAdmin
-- Compatible with CI/CD (GitHub Actions, Jenkins, GitLab CI)
-
-## 🧑‍💻 Developer Utilities
-
-| Tool            | Access                                      |
-|------------------|---------------------------------------------|
-| Symfony Profiler | `http://localhost:8080/_profiler`          |
-| PgAdmin          | `http://localhost:5050` login: `admin/admin` |
-| Xdebug (optional)| Configure in `php/dockerfile` if needed    |
-| Faker            | Data generation in development             |
-
-## 🧼 Clean Architecture Domains (DDD)
-
-- `src/Domain`: Entities, Value Objects, Interfaces
-- `src/Application`: Use Cases (services, commands)
-- `src/Infrastructure`: Adapters (Doctrine, HTTP)
-- `src/Controller`: Symfony HTTP Controllers
-
-Each layer communicates only with the layer below it using interfaces → no tight coupling.
-
-## 👨‍💻 Author
-
-**Rajekevin**  
-Senior Fullstack Developer — PHP, Symfony, Java, Angular  
-🔗 [LinkedIn](https://www.linkedin.com/in/rajekevin)  
-📫 Contact: rajekevin@hotmail.fr
-
-## 📄 License
-
-This project is open-sourced under the MIT license.
+MIT

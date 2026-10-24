@@ -1,0 +1,25 @@
+monolog:
+    channels: ['budget']
+
+when@dev:
+    monolog:
+        handlers:
+            main:
+                type: stream
+                path: '%kernel.logs_dir%/%kernel.environment%.log'
+                level: debug
+
+when@test:
+    monolog:
+        handlers:
+            main:
+                type: test
+
+when@prod:
+    monolog:
+        handlers:
+            main:
+                type: stream
+                path: php://stderr
+                level: info
+                formatter: monolog.formatter.json
