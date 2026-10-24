@@ -56,7 +56,6 @@ Without Docker, from `backend/`: `composer install`, then `composer qa`.
 - [ ] Categories and a per-category limit, scenarios first
 - [ ] Carry the remaining amount over to the next month (or not): decide in a Gherkin scenario
 - [ ] Reconnect the Vue front (`front_myexpensetracker/`) to the new API
-- [ ] Commit `backend/composer.lock` after the first local `composer install`
 
 ## License
 

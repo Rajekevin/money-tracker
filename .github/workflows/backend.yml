@@ -7,7 +7,7 @@ on:
     paths: ['backend/**', '.github/workflows/backend.yml']
 
 permissions:
-  contents: write
+  contents: read
 
 defaults:
   run:
@@ -28,22 +28,7 @@ jobs:
 
       - name: Install dependencies
         id: install
-        run: |
-          if [ -f composer.lock ]; then
-            composer install --no-interaction --no-progress --prefer-dist
-          else
-            composer update --no-interaction --no-progress --prefer-dist
-            echo "lock_created=1" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Commit the first composer.lock
-        if: steps.install.outputs.lock_created == '1' && github.event_name == 'push'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add composer.lock
-          git commit -m "Add composer.lock resolved by CI"
-          git push
+        run: composer install --no-interaction --no-progress --prefer-dist
 
       # Every tool reports in a format GitHub turns into annotations on the PR.
       - name: Coding standards (PHP-CS-Fixer)
